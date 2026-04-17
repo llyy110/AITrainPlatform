@@ -1,0 +1,112 @@
+version: '3.8'
+
+networks:
+  AI-platform:
+    driver: bridge
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode1:
+  mysql_data:
+  redis_data:
+
+services:
+  # ========== Hadoop（单DataNode） ==========
+  namenode:
+    image: apache/hadoop:3.4.1
+    container_name: namenode
+    hostname: namenode
+    restart: always
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ./hs-config/hadoop-config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./hs-config/hadoop-config/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./.env
+    networks:
+      - AI-platform
+
+  datanode1:
+    image: apache/hadoop:3.4.1
+    container_name: datanode1
+    hostname: datanode1
+    restart: always
+    volumes:
+      - hadoop_datanode1:/hadoop/dfs/data
+      - ./hs-config/hadoop-config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./hs-config/hadoop-config/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+    env_file:
+      - ./.env
+    networks:
+      - AI-platform
+
+  # ========== Spark ==========
+  spark-master:
+    image: apache/spark:3.5.5
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_WEBUI_PORT=8080
+    networks:
+      - AI-platform
+
+  spark-worker:
+    image: apache/spark:3.5.5
+    container_name: spark-worker
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1024M
+      - SPARK_WORKER_CORES=1
+    networks:
+      - AI-platform
+
+  # ========== MySQL ==========
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    hostname: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sql123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-modelTrainDB}
+      MYSQL_USER: ${MYSQL_USER:-modelmanager}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sql123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - AI-platform
+
+  # ========== Redis ==========
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    hostname: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-red123}
+    volumes:
+      - redis_data:/data
+    networks:
+      - AI-platform
