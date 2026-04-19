@@ -9,14 +9,15 @@ const routes = [
   {
     path: '/',
     component: MainLayout,
-    meta: { requiresAuth: false },// ← 改为 false，允许未登录访问
+    meta: { requiresAuth: false },
     children: [
-      { path: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { title: '工作台' } },
-      { path: 'training/new', component: () => import('../views/TrainingNew.vue'), meta: { title: '新建训练' } },
-      { path: 'training/history', component: () => import('../views/TrainingHistory.vue'), meta: { title: '训练历史' } },
-      { path: 'training/detail/:id', component: () => import('../views/TrainingDetail.vue'), meta: { title: '训练详情' } },
-      { path: 'profile', component: () => import('../views/Profile.vue'), meta: { title: '个人中心' } },
-      { path: 'forum', component: () => import('../views/Forum.vue'), meta: { title: '社区' } },
+      { path: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { title: '工作台', requiresAuth: false } },
+      { path: 'training/new', component: () => import('../views/TrainingNew.vue'), meta: { title: '新建训练', requiresAuth: true } },
+      { path: 'training/history', component: () => import('../views/TrainingHistory.vue'), meta: { title: '训练历史', requiresAuth: true } },
+      { path: 'training/detail/:id', component: () => import('../views/TrainingDetail.vue'), meta: { title: '训练详情', requiresAuth: true } },
+      { path: 'profile', component: () => import('../views/Profile.vue'), meta: { title: '个人中心', requiresAuth: true } },
+      { path: 'forum', component: () => import('../views/Forum.vue'), meta: { title: '社区', requiresAuth: false } },
+      { path: 'forum/post/:id', component: () => import('../views/ForumDetail.vue'), meta: { title: '帖子详情', requiresAuth: false } },
       { path: '', redirect: 'dashboard' }
     ]
   }
@@ -27,12 +28,14 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   if (to.meta.requiresAuth && !userStore.isLoggedIn) {
-    return '/login'
+    sessionStorage.setItem('redirectAfterLogin', to.fullPath)
+    next('/login')
+  } else {
+    next()
   }
-  return true
 })
 
 export default router

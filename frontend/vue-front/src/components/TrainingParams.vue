@@ -36,5 +36,19 @@ const getParams = () => ({
   learning_rate: form.learningRate
 })
 
-defineExpose({ getParams })
+const setParams = (params) => {
+  if (params.model_type) form.modelType = params.model_type
+  if (params.hidden_layer_sizes !== undefined) form.hiddenLayerSizes = params.hidden_layer_sizes
+  if (params.max_iter !== undefined) form.maxIter = params.max_iter
+  if (params.learning_rate !== undefined) form.learningRate = params.learning_rate
+}
+
+const getRawForm = () => ({
+  modelType: form.modelType,
+  hiddenLayerSizes: form.hiddenLayerSizes,
+  maxIter: form.maxIter,
+  learningRate: form.learningRate
+})
+
+defineExpose({ getParams, setParams, getRawForm })
 </script>

@@ -5,7 +5,6 @@ urlpatterns = [
     path('posts', views.PostListCreateView.as_view()),
     path('posts/<int:pk>', views.PostDetailView.as_view()),
     path('posts/<int:post_id>/comments', views.CommentListView.as_view()),
-
     path('comments', views.CommentCreateView.as_view()),
-    path('comments/<int:pk>', views.CommentDetailView.as_view()),   # 新增
+    path('comments/<int:pk>', views.CommentDetailView.as_view()),
 ]

@@ -1,16 +1,16 @@
 <template>
   <div id="app">
     <el-container>
-      <el-header v-if="isLoggedIn">
-        <el-menu mode="horizontal" router>
-          <el-menu-item index="/dashboard">控制面板</el-menu-item>
-          <el-menu-item index="/training/new">我的训练</el-menu-item>
-          <el-menu-item index="/training/history">训练记录</el-menu-item>
-          <el-menu-item index="/forum">交流论坛</el-menu-item>
-          <el-menu-item index="/profile">个人中心</el-menu-item>
-          <el-menu-item @click="logout" style="float:right">退出</el-menu-item>
-        </el-menu>
-      </el-header>
+<!--      <el-header v-if="isLoggedIn">-->
+<!--        <el-menu mode="horizontal" router>-->
+<!--          <el-menu-item index="/dashboard">控制面板</el-menu-item>-->
+<!--          <el-menu-item index="/training/new">我的训练</el-menu-item>-->
+<!--          <el-menu-item index="/training/history">训练记录</el-menu-item>-->
+<!--          <el-menu-item index="/forum">交流论坛</el-menu-item>-->
+<!--          <el-menu-item index="/profile">个人中心</el-menu-item>-->
+<!--          <el-menu-item @click="logout" style="float:right">退出</el-menu-item>-->
+<!--        </el-menu>-->
+<!--      </el-header>-->
       <el-main>
         <router-view />
       </el-main>

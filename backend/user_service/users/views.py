@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from user_service import settings
 from .UserSerializers import LoginSerializer, RegisterSerializer, UserSerializer, \
     ProfileUpdateSerializer, ResetPasswordSerializer, SendResetCodeSerializer
 
@@ -42,13 +43,12 @@ def register(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    print('logining')
+    print('login request data:', request.data)  # 调试
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     login_id = serializer.validated_data['loginId']
     password = serializer.validated_data['password']
 
-    # 支持邮箱或用户名登录
     try:
         if '@' in login_id:
             user_obj = User.objects.get(email=login_id)
@@ -58,18 +58,18 @@ def login(request):
     except User.DoesNotExist:
         username = None
 
-    user = authenticate(request, username=username, password=password)
+    print('username for auth:', username)  # 调试
+    user = authenticate(request=request, username=username, password=password)
 
-    # 如果用户不存在
     if not user:
-        return Response({'detail': '用户名或邮箱不存在'}, status=401)
+        return Response({'detail': '用户名或密码错误'}, status=401)
 
     refresh = RefreshToken.for_user(user)
     return Response({
         'detail': 'success',
         'access': str(refresh.access_token),
         'refresh': str(refresh),
-        'user': UserSerializer(user, context={'request': request}).data  # 传入 request
+        'user': UserSerializer(user, context={'request': request}).data
     })
 
 
@@ -85,7 +85,12 @@ def send_email_code(to_email, prefix='sms'):
     EMAIL_FROM = "3547262443@qq.com"
     email_title = '邮箱激活' if prefix == 'sms' else '找回密码'
     email_body = f"您的{'注册' if prefix == 'sms' else '找回密码'}验证码为：{sms_code}，有效期为5分钟，请及时验证。"
-    send_status = send_mail(email_title, email_body, EMAIL_FROM, [to_email])
+    send_status = send_mail(email_title,
+                            email_body,
+                            settings.DEFAULT_FROM_EMAIL,  # 使用配置中的默认发件人
+                            [to_email],
+                            fail_silently=False,
+                            )
     print(f'{prefix}:{to_email}', sms_code)
     cache.set(f'{prefix}:{to_email}', sms_code, timeout=300)
     if send_status == 0:

@@ -22,7 +22,7 @@ from datetime import timedelta
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'my-secret-key')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-lgtiphx#ezoelvx55qamypbif)f57l%r*vxi7m(02q90#*#(y-')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
@@ -48,9 +48,11 @@ AUTH_USER_MODEL = 'users.User'
 # 发送邮箱验证码
 EMAIL_HOST = "smtp.qq.com"     # 服务器
 EMAIL_PORT = 587                 # 一般情况下都为25
-EMAIL_HOST_USER = os.environ.get('EMAIL_NUM')     # 账号
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')     # 账号
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD') # （上面保存的授权码）
 EMAIL_USE_TLS = True       # 一般都为False
+EMAIL_USE_SSL = False
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_FROM = "1234567890@qq.com"      # 邮箱来自
 email_title = '训练'
 
@@ -77,6 +79,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 MIDDLEWARE = [

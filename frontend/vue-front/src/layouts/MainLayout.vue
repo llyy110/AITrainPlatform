@@ -41,7 +41,7 @@
           </el-icon>
           <span>社区</span>
         </el-menu-item>
-        <el-menu-item index="/profile">
+        <el-menu-item v-if="userStore.isLoggedIn" index="/profile">
           <el-icon>
             <User/>
           </el-icon>
@@ -70,10 +70,11 @@
               inline-prompt
               @change="toggleDark"
           />
-          <el-badge :value="3" :max="99" class="notice-badge">
+          <el-badge v-if="userStore.isLoggedIn" :value="3" :max="99" class="notice-badge">
             <el-button :icon="Bell" circle/>
           </el-badge>
-          <el-dropdown @command="handleUserCommand">
+          <!-- 登录状态显示用户信息，未登录显示登录/注册按钮 -->
+          <el-dropdown v-if="userStore.isLoggedIn" @command="handleUserCommand">
             <span class="user-info">
               <el-avatar :size="36" :src="userStore.userInfo.avatar"/>
               <span class="username">{{ userStore.userInfo.username || '用户' }}</span>
@@ -85,6 +86,10 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+          <div v-else class="auth-buttons">
+            <el-button link @click="$router.push('/login')">登录</el-button>
+            <el-button type="primary" size="small" @click="$router.push('/register')">注册</el-button>
+          </div>
         </div>
       </el-header>
 
@@ -102,14 +107,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useDark, useToggle } from '@vueuse/core'
-import { useUserStore } from '@/stores/user'
-import { useTrainingStore } from '@/stores/training'
-import { useRouter } from 'vue-router'
-import { Bell, ChatLineSquare, Cpu, DataBoard, Expand, Fold, List, Moon, Sunny, User } from '@element-plus/icons-vue'
+import {onMounted, ref} from 'vue'
+import {useDark, useToggle} from '@vueuse/core'
+import {useUserStore} from '@/stores/user'
+import {useTrainingStore} from '@/stores/training'
+import {useRouter} from 'vue-router'
+import {Bell, ChatLineSquare, Cpu, DataBoard, Expand, Fold, List, Moon, Sunny, User} from '@element-plus/icons-vue'
 import AgentChat from '@/components/AgentChat.vue'
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 
 const isCollapse = ref(false)
 const isDark = useDark()
@@ -118,37 +123,32 @@ const userStore = useUserStore()
 const trainingStore = useTrainingStore()
 const router = useRouter()
 
-// 登录后自动恢复最新训练（如果存在且在10分钟内）
 const restoreLatestTraining = async () => {
-  // 如果已经有 currentTaskId 且未过期，则直接使用
+  if (!userStore.isLoggedIn) return
   if (trainingStore.currentTaskId && !trainingStore.isTaskExpired()) {
-    // 如果当前路由不是我的训练，可以跳转过去（可选）
     if (router.currentRoute.value.path !== '/training/new') {
       router.push('/training/new')
     }
     return
   }
-
-  // 否则从后端获取最新记录
   const latest = await trainingStore.getLatestTraining()
-  if (latest && latest.status === 'training' || latest.status === 'pending') {
+  if (latest && (latest.status === 'training' || latest.status === 'pending')) {
     const createdAt = new Date(latest.created_at).getTime()
     const elapsed = Date.now() - createdAt
-    if (elapsed <= 10 * 60 * 1000) { // 10分钟内
+    if (elapsed <= 10 * 60 * 1000) {
       trainingStore.setCurrentTaskId(latest.task_id)
       ElMessage.info(`恢复未完成的训练任务：${latest.model_type}`)
       if (router.currentRoute.value.path !== '/training/new') {
         router.push('/training/new')
       }
-    } else {
-      // 任务已超过10分钟，不再自动恢复，但后端数据仍然存在
-      console.log('最新任务已超过10分钟，不自动恢复')
     }
   }
 }
 
 onMounted(() => {
-  restoreLatestTraining()
+  if (userStore.isLoggedIn) {
+    restoreLatestTraining()
+  }
 })
 
 const handleUserCommand = (cmd) => {
@@ -255,9 +255,16 @@ const handleUserCommand = (cmd) => {
   .notice-badge {
     margin-right: 8px;
   }
+
+  .auth-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .app-main {
+  height: calc(100vh - 64px); // 64px 为头部 .el-header 的高度
   padding: 24px;
   background: transparent;
   overflow-y: auto;

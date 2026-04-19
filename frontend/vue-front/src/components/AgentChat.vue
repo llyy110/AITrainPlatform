@@ -57,30 +57,68 @@
             <el-button @click="send" :loading="isTyping" :icon="Promotion" />
           </template>
         </el-input>
-        <el-button v-if="isTyping" link @click="stopGeneration">停止生成</el-button>
+        <div class="chat-actions">
+          <el-button v-if="isTyping" link @click="stopGeneration">停止生成</el-button>
+          <el-button link @click="clearHistory">清空对话</el-button>
+        </div>
       </div>
     </div>
   </el-drawer>
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue'
+import { ref, nextTick, watch, onMounted } from 'vue'
 import { ChatDotRound, User, Service, Promotion } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 
 const visible = ref(false)
 const input = ref('')
-const messages = ref([
-  { role: 'assistant', content: '你好！我是 Neuro 助手，可以帮你查询训练进度、推荐参数、解释模型原理。试试下面的快捷提问吧！' }
-])
+const messages = ref([])
 const isTyping = ref(false)
 const msgContainer = ref(null)
 let abortController = null
 
 const quickQuestions = ['当前训练进度？', '推荐一组CNN分类参数', '如何提高模型准确率？', 'BP神经网络原理']
 
-const toggleChat = () => { visible.value = !visible.value }
+// 初始化欢迎消息
+const initMessages = () => {
+  messages.value = [
+    { role: 'assistant', content: '你好！我是 Neuro 助手，可以帮你查询训练进度、推荐参数、解释模型原理。试试下面的快捷提问吧！' }
+  ]
+}
+
+// 从 localStorage 加载历史
+const loadHistory = () => {
+  const saved = localStorage.getItem('agent_messages')
+  if (saved) {
+    try {
+      messages.value = JSON.parse(saved)
+    } catch (e) {
+      initMessages()
+    }
+  } else {
+    initMessages()
+  }
+}
+
+// 保存历史到 localStorage
+const saveHistory = () => {
+  // 只保存非 typing 状态的消息
+  const toSave = messages.value.filter(m => !m.isTyping)
+  localStorage.setItem('agent_messages', JSON.stringify(toSave))
+}
+
+// 清空历史
+const clearHistory = () => {
+  initMessages()
+  localStorage.removeItem('agent_messages')
+  ElMessage.success('对话已清空')
+}
+
+const toggleChat = () => {
+  visible.value = !visible.value
+}
 
 const formatContent = (text) => {
   return text.replace(/\n/g, '<br>').replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -114,6 +152,7 @@ const typewriterEffect = (fullText, msgIndex) => {
       clearInterval(timer)
       messages.value[msgIndex].isTyping = false
       isTyping.value = false
+      saveHistory()
     }
   }, 25)
   return timer
@@ -123,11 +162,11 @@ const send = async () => {
   if (!input.value.trim() || isTyping.value) return
   const userMsg = { role: 'user', content: input.value.trim() }
   messages.value.push(userMsg)
+  saveHistory()
   const query = input.value
   input.value = ''
   scrollToBottom()
 
-  // 添加助手占位消息
   const assistantMsg = { role: 'assistant', content: '', isTyping: true }
   messages.value.push(assistantMsg)
   const msgIndex = messages.value.length - 1
@@ -147,6 +186,7 @@ const send = async () => {
     }
     messages.value[msgIndex].isTyping = false
     isTyping.value = false
+    saveHistory()
   }
 }
 
@@ -159,6 +199,10 @@ const stopGeneration = () => {
 
 watch(visible, (val) => {
   if (val) scrollToBottom()
+})
+
+onMounted(() => {
+  loadHistory()
 })
 </script>
 
@@ -299,6 +343,11 @@ watch(visible, (val) => {
   .dark & {
     background: #1e2430;
     border-top-color: #2a2f3a;
+  }
+  .chat-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
   }
 }
 </style>

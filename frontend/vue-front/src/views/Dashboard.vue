@@ -3,16 +3,32 @@
     <!-- 欢迎横幅 -->
     <div class="welcome-banner">
       <div>
-        <h1>欢迎回来，{{ userStore.userInfo.username || '研究者' }} 👋</h1>
-        <p>今日适合开启新的神经网络实验</p>
+        <h1 v-if="userStore.isLoggedIn">欢迎回来，{{ userStore.userInfo.username || '研究者' }} 👋</h1>
+        <h1 v-else>探索 NeuroStudio 👋</h1>
+        <p v-if="userStore.isLoggedIn">今日适合开启新的神经网络实验</p>
+        <p v-else>一个开箱即用的分布式神经网络训练平台</p>
       </div>
-      <el-button type="primary" round size="large" @click="$router.push('/training/new')">
+      <el-button v-if="userStore.isLoggedIn" type="primary" round size="large" @click="$router.push('/training/new')">
         <el-icon><Plus /></el-icon> 新建训练
+      </el-button>
+      <el-button v-else type="primary" round size="large" @click="$router.push('/register')">
+        <el-icon><User /></el-icon> 立即注册体验
       </el-button>
     </div>
 
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" class="stat-cards">
+    <!-- 未登录时展示平台介绍卡片 -->
+    <el-row v-if="!userStore.isLoggedIn" :gutter="24" class="intro-row">
+      <el-col :xs="24" :md="8" v-for="feature in features" :key="feature.title">
+        <div class="feature-card">
+          <el-icon :size="48" :color="feature.color"><component :is="feature.icon" /></el-icon>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.desc }}</p>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 统计卡片：仅登录可见 -->
+    <el-row :gutter="20" class="stat-cards" v-if="userStore.isLoggedIn">
       <el-col :xs="24" :sm="12" :md="6" v-for="stat in stats" :key="stat.label">
         <div class="stat-card" :class="stat.color">
           <div class="stat-icon"><el-icon :size="32"><component :is="stat.icon" /></el-icon></div>
@@ -24,8 +40,8 @@
       </el-col>
     </el-row>
 
-    <!-- 最近任务 + 公告 -->
-    <el-row :gutter="24" class="info-row">
+    <!-- 最近任务 + 公告：仅登录可见 -->
+    <el-row :gutter="24" class="info-row" v-if="userStore.isLoggedIn">
       <el-col :xs="24" :lg="16">
         <el-card class="glass-card" shadow="never">
           <template #header>
@@ -71,8 +87,8 @@
       </el-col>
     </el-row>
 
-    <!-- 快速入口 / 模型推荐 -->
-    <el-row :gutter="24" style="margin-top: 24px">
+    <!-- 模型表现趋势：仅登录可见 -->
+    <el-row :gutter="24" style="margin-top: 24px" v-if="userStore.isLoggedIn">
       <el-col :span="24">
         <el-card class="glass-card">
           <template #header>
@@ -86,11 +102,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useTrainingStore } from '@/stores/training'
 import { useRouter } from 'vue-router'
-import { Plus, List, Bell, DataAnalysis, Timer, Finished, Cpu, TrendCharts } from '@element-plus/icons-vue'
+import { Plus, User, List, Bell, DataAnalysis, Timer, Finished, Cpu, TrendCharts } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 import * as echarts from 'echarts'
@@ -101,15 +117,24 @@ const router = useRouter()
 const loading = ref(false)
 const recentTasks = ref([])
 const trendChart = ref(null)
+const statsLoading = ref(false)
 
-// 统计数据（可从后端获取，此处为模拟）
-const stats = ref([
-  { label: '总训练次数', value: 24, icon: 'DataAnalysis', color: 'blue' },
-  { label: '进行中', value: 3, icon: 'Timer', color: 'orange' },
-  { label: '已完成', value: 19, icon: 'Finished', color: 'green' },
-  { label: '模型类型', value: 5, icon: 'Cpu', color: 'purple' }
+// 平台特色介绍（保持不变）
+const features = ref([
+  { title: '分布式训练', icon: 'Cpu', color: '#409eff', desc: '基于Hadoop+Spark集群，训练效率提升3倍以上' },
+  { title: '可视化监控', icon: 'TrendCharts', color: '#67c23a', desc: '实时误差曲线与日志流，训练过程一目了然' },
+  { title: 'AI智能助手', icon: 'ChatDotRound', color: '#e6a23c', desc: '大模型驱动的问答助手，随时解答疑问' }
 ])
 
+// 统计数据（初始值，后续通过接口更新）
+const stats = ref([
+  { label: '总训练次数', value: 0, icon: 'DataAnalysis', color: 'blue' },
+  { label: '进行中', value: 0, icon: 'Timer', color: 'orange' },
+  { label: '已完成', value: 0, icon: 'Finished', color: 'green' },
+  { label: '失败', value: 0, icon: 'Cpu', color: 'purple' }  // 可根据实际调整
+])
+
+// 公告（可保留演示数据，或也改为动态）
 const announcements = ref([
   { id: 1, tag: '新功能', tagColor: '#409eff', content: '支持训练任务中途停止与恢复', time: '2小时前' },
   { id: 2, tag: '优化', tagColor: '#67c23a', content: '文件管理器支持拖拽上传', time: '昨天' },
@@ -117,8 +142,31 @@ const announcements = ref([
 ])
 
 const statusTag = (status) => {
-  const map = { training: 'warning', completed: 'success', failed: 'danger', pending: 'info' }
+  const map = { training: 'warning', completed: 'success', failed: 'danger', pending: 'info', stopped: 'info' }
   return map[status] || 'info'
+}
+
+// 获取统计数据（从 usage_records 的统计接口）
+const fetchStats = async () => {
+  statsLoading.value = true
+  try {
+    // 后端 TrainingStatsView 返回 { total, completed, failed, success_rate, avg_accuracy }
+    const res = await api.get('/usage/records/stats/')
+    const data = res.data
+    // 进行中的数量 = 总数 - 已完成 - 失败（假设没有 pending 等其他状态）
+    const training = data.total - data.completed - data.failed
+    stats.value = [
+      { label: '总训练次数', value: data.total || 0, icon: 'DataAnalysis', color: 'blue' },
+      { label: '进行中', value: training > 0 ? training : 0, icon: 'Timer', color: 'orange' },
+      { label: '已完成', value: data.completed || 0, icon: 'Finished', color: 'green' },
+      { label: '失败', value: data.failed || 0, icon: 'Cpu', color: 'purple' }
+    ]
+  } catch (e) {
+    console.error('获取统计数据失败', e)
+    // 失败时保留默认值 0
+  } finally {
+    statsLoading.value = false
+  }
 }
 
 const fetchRecentTasks = async () => {
@@ -140,6 +188,8 @@ const stopTask = async (id) => {
     await api.post(`/train/training/stop/${id}`)
     ElMessage.success('已发送停止指令')
     fetchRecentTasks()
+    // 停止后刷新统计数据
+    fetchStats()
   } catch (e) {
     ElMessage.error('停止失败')
   }
@@ -162,12 +212,16 @@ const initTrendChart = () => {
 }
 
 onMounted(() => {
-  fetchRecentTasks()
-  initTrendChart()
+  if (userStore.isLoggedIn) {
+    fetchStats()
+    fetchRecentTasks()
+    initTrendChart()
+  }
 })
 </script>
 
 <style scoped lang="scss">
+// 保持原有样式不变
 .dashboard {
   max-width: 1400px;
   margin: 0 auto;
@@ -187,6 +241,31 @@ onMounted(() => {
     -webkit-text-fill-color: transparent;
   }
   p { opacity: 0.7; margin: 0; font-size: 1rem; }
+}
+
+.intro-row {
+  margin: 40px 0;
+  .feature-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border-radius: 24px;
+    padding: 32px 24px;
+    text-align: center;
+    border: var(--border-light);
+    transition: transform 0.3s;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--primary-glow);
+    }
+    h3 {
+      margin: 16px 0 8px;
+      font-size: 20px;
+    }
+    p {
+      opacity: 0.8;
+      font-size: 14px;
+    }
+  }
 }
 
 .stat-cards { margin-bottom: 30px; }

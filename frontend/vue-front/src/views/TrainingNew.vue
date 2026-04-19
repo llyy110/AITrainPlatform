@@ -9,14 +9,14 @@
             <el-card class="glass-card config-card" shadow="never">
               <template #header>
                 <div class="card-header">
-                  <span><el-icon><Setting/></el-icon> 模型配置</span>
+                  <span><el-icon><Setting /></el-icon> 模型配置</span>
                   <div>
-                    <el-button link @click="loadPreset">加载预设</el-button>
+                    <el-button link @click="openTemplateManager">加载预设</el-button>
                     <el-button link @click="saveAsPreset">保存模板</el-button>
                   </div>
                 </div>
               </template>
-              <TrainingParams ref="paramsRef"/>
+              <TrainingParams ref="paramsRef" />
             </el-card>
           </el-col>
 
@@ -24,14 +24,14 @@
           <el-col :xs="24" :md="12">
             <el-card class="glass-card data-card" shadow="never">
               <template #header>
-                <span><el-icon><FolderOpened/></el-icon> 数据源</span>
+                <span><el-icon><FolderOpened /></el-icon> 数据源</span>
               </template>
-              <FileSelector v-model="selectedPath" @preview="handleFilePreview"/>
-              <el-divider/>
+              <FileSelector v-model="selectedPath" @preview="handleFilePreview" />
+              <el-divider />
               <div class="data-preview">
                 <div class="preview-header">
                   <el-button size="small" @click="previewData" :loading="previewLoading">
-                    <el-icon><View/></el-icon>
+                    <el-icon><View /></el-icon>
                     预览前100行
                   </el-button>
                   <span v-if="previewRows.length" class="hint">已加载 {{ previewRows.length }} 行</span>
@@ -43,7 +43,7 @@
                     </template>
                   </el-table-column>
                 </el-table>
-                <el-empty v-else description="暂无预览数据"/>
+                <el-empty v-else description="暂无预览数据" />
               </div>
             </el-card>
           </el-col>
@@ -59,15 +59,15 @@
           </el-button>
         </div>
 
-        <!-- 进度与日志区域（仅当有进行中的训练时显示） -->
+        <!-- 进度与日志区域 -->
         <el-row :gutter="24" v-if="currentTaskId">
           <el-col :xs="24" :lg="12">
-            <ProgressIndicator :task-id="currentTaskId" @completed="onTrainingCompleted"/>
+            <ProgressIndicator :task-id="currentTaskId" @completed="onTrainingCompleted" />
           </el-col>
           <el-col :xs="24" :lg="12">
             <el-card class="glass-card log-card">
               <template #header>
-                <span><el-icon><Document/></el-icon> 实时日志</span>
+                <span><el-icon><Document /></el-icon> 实时日志</span>
                 <el-button link @click="logs = ''">清空</el-button>
               </template>
               <div class="log-container" ref="logContainer">
@@ -78,7 +78,7 @@
         </el-row>
 
         <!-- 图表 -->
-        <TrainingChart v-if="currentTaskId" :task-id="currentTaskId" class="chart-card"/>
+        <TrainingChart v-if="currentTaskId" :task-id="currentTaskId" class="chart-card" />
       </el-tab-pane>
 
       <!-- 历史训练标签页 -->
@@ -110,6 +110,24 @@
         />
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 模板管理对话框 -->
+    <el-dialog v-model="templateDialogVisible" title="管理预设模板" width="600px">
+      <el-table :data="templates" style="width: 100%">
+        <el-table-column prop="name" label="模板名称" />
+        <el-table-column prop="savedAt" label="保存时间" :formatter="formatTemplateTime" />
+        <el-table-column label="操作" width="150">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="applyTemplate(row)">加载</el-button>
+            <el-button link type="danger" @click="deleteTemplate(row.name)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="templates.length === 0" description="暂无保存的模板" />
+      <template #footer>
+        <el-button @click="templateDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -155,17 +173,107 @@ const historyPage = ref(1)
 const historyPageSize = ref(10)
 const historyTotal = ref(0)
 
-// 监听 store 变化，同步到本地
+// 模板管理相关
+const templateDialogVisible = ref(false)
+const templates = ref([])
+const TEMPLATE_KEY = 'training_presets'
+
+// ==================== 模板管理函数 ====================
+const getTemplates = () => {
+  try {
+    return JSON.parse(localStorage.getItem(TEMPLATE_KEY)) || []
+  } catch {
+    return []
+  }
+}
+
+const saveTemplateToStorage = (name, params, rawForm) => {
+  const allTemplates = getTemplates()
+  const existingIndex = allTemplates.findIndex(t => t.name === name)
+  const template = {
+    name,
+    params,
+    rawForm,
+    savedAt: new Date().toISOString()
+  }
+
+  if (existingIndex >= 0) {
+    allTemplates[existingIndex] = template
+  } else {
+    allTemplates.push(template)
+  }
+
+  // 限制最多保存 10 个
+  if (allTemplates.length > 10) allTemplates.shift()
+  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(allTemplates))
+}
+
+const openTemplateManager = () => {
+  templates.value = getTemplates()
+  templateDialogVisible.value = true
+}
+
+const applyTemplate = (template) => {
+  if (paramsRef.value) {
+    paramsRef.value.setParams(template.params)
+    templateDialogVisible.value = false
+    ElMessage.success(`已加载模板：${template.name}`)
+  }
+}
+
+const deleteTemplate = (name) => {
+  ElMessageBox.confirm(`确定删除模板 "${name}" 吗？`, '提示', { type: 'warning' })
+    .then(() => {
+      const filtered = getTemplates().filter(t => t.name !== name)
+      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(filtered))
+      templates.value = filtered
+      ElMessage.success(`模板 "${name}" 已删除`)
+    })
+    .catch(() => {})
+}
+
+const formatTemplateTime = (row) => {
+  if (!row.savedAt) return ''
+  return new Date(row.savedAt).toLocaleString('zh-CN')
+}
+
+const saveAsPreset = () => {
+  if (!paramsRef.value) return
+  const params = paramsRef.value.getParams()
+  const rawForm = paramsRef.value.getRawForm()
+
+  ElMessageBox.prompt('请输入模板名称', '保存模板', {
+    confirmButtonText: '保存',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '模板名称不能为空'
+  })
+    .then(({ value }) => {
+      const allTemplates = getTemplates()
+      const existing = allTemplates.find(t => t.name === value)
+
+      if (existing) {
+        ElMessageBox.confirm(`模板 "${value}" 已存在，是否覆盖？`, '提示', { type: 'warning' })
+          .then(() => {
+            saveTemplateToStorage(value, params, rawForm)
+            ElMessage.success(`模板 "${value}" 已覆盖`)
+          })
+          .catch(() => {})
+      } else {
+        saveTemplateToStorage(value, params, rawForm)
+        ElMessage.success(`模板 "${value}" 已保存`)
+      }
+    })
+    .catch(() => {})
+}
+
+// ==================== 训练相关原有逻辑 ====================
 watch(() => trainingStore.currentTaskId, (newId) => {
   currentTaskId.value = newId
-  if (newId) {
-    startLogPolling()
-  } else {
-    clearLogPolling()
-  }
+  if (newId) startLogPolling()
+  else clearLogPolling()
 })
 
-// 获取历史训练记录
 const fetchHistory = async () => {
   try {
     const res = await trainingStore.getHistory({ page: historyPage.value, page_size: historyPageSize.value })
@@ -176,7 +284,6 @@ const fetchHistory = async () => {
   }
 }
 
-// 重新运行训练
 const rerunTraining = async (record) => {
   try {
     await ElMessageBox.confirm(`确定要重新运行训练 #${record.id} 吗？`, '提示', { type: 'info' })
@@ -184,19 +291,14 @@ const rerunTraining = async (record) => {
     ElMessage.success('训练已重新启动')
     activeTab.value = 'new'
     trainingStore.setCurrentTaskId(res.data.task_id)
-    // 刷新历史列表
     await fetchHistory()
   } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.detail || '重新运行失败')
-    }
+    if (e !== 'cancel') ElMessage.error(e.response?.data?.detail || '重新运行失败')
   }
 }
 
-// 查看详情
 const viewDetail = (id) => router.push(`/training/detail/${id}`)
 
-// 添加预览处理函数
 const handleFilePreview = async (filePath) => {
   previewLoading.value = true
   try {
@@ -218,7 +320,6 @@ const handleFilePreview = async (filePath) => {
   }
 }
 
-// 停止当前训练
 const stopCurrentTraining = async () => {
   if (!currentTaskId.value) return
   stopping.value = true
@@ -229,40 +330,29 @@ const stopCurrentTraining = async () => {
     trainingStore.clearCurrentTaskId()
     clearLogPolling()
   } catch (e) {
-    if (e.response?.status === 404) {
-      ElMessage.error('停止接口不存在，请联系管理员')
-    } else {
-      ElMessage.error('停止失败')
-    }
+    if (e.response?.status === 404) ElMessage.error('停止接口不存在，请联系管理员')
+    else ElMessage.error('停止失败')
   } finally {
     stopping.value = false
   }
 }
 
-// 训练完成后的回调
 const onTrainingCompleted = () => {
   ElMessage.success('训练完成！可在历史记录中查看详情')
   clearLogPolling()
   startExpireTimer()
-  // 刷新历史记录（如果当前在历史标签页）
-  if (activeTab.value === 'history') {
-    fetchHistory()
-  }
+  if (activeTab.value === 'history') fetchHistory()
 }
 
-// 启动过期计时器
 const startExpireTimer = () => {
   if (expireTimer) clearTimeout(expireTimer)
   expireTimer = setTimeout(() => {
     ElMessage.info('训练记录已保留10分钟，页面将不再显示该任务（数据已保存）')
     trainingStore.clearCurrentTaskId()
-    if (currentTaskId.value) {
-      currentTaskId.value = null
-    }
+    currentTaskId.value = null
   }, 10 * 60 * 1000)
 }
 
-// 停止过期计时器
 const stopExpireTimer = () => {
   if (expireTimer) {
     clearTimeout(expireTimer)
@@ -270,7 +360,6 @@ const stopExpireTimer = () => {
   }
 }
 
-// 开始新训练
 const startTrain = async () => {
   if (!selectedPath.value) {
     ElMessage.warning('请选择数据文件或目录')
@@ -291,7 +380,6 @@ const startTrain = async () => {
   }
 }
 
-// 预览数据（手动点击按钮）
 const previewData = async () => {
   if (!selectedPath.value) {
     ElMessage.warning('请先选择数据文件')
@@ -317,7 +405,6 @@ const previewData = async () => {
   }
 }
 
-// 日志轮询
 const startLogPolling = () => {
   if (logTimer) clearInterval(logTimer)
   logTimer = setInterval(async () => {
@@ -330,9 +417,7 @@ const startLogPolling = () => {
           logContainer.value.scrollTop = logContainer.value.scrollHeight
         }
       })
-    } catch (e) {
-      // 忽略
-    }
+    } catch (e) {}
   }, 2000)
 }
 
@@ -343,21 +428,8 @@ const clearLogPolling = () => {
   }
 }
 
-// 预设模板功能（示例）
-const loadPreset = () => {
-  ElMessage.info('功能开发中，敬请期待')
-}
-const saveAsPreset = () => {
-  const params = paramsRef.value.getParams()
-  console.log('当前参数:', params)
-  ElMessage.success('模板已保存（演示）')
-}
-
-// 如果已有进行中的训练，立即启动日志轮询
 onMounted(() => {
-  if (currentTaskId.value) {
-    startLogPolling()
-  }
+  if (currentTaskId.value) startLogPolling()
   fetchHistory()
 })
 
@@ -372,18 +444,13 @@ onUnmounted(() => {
   max-width: 1400px;
   margin: 0 auto;
 }
-
-.training-tabs {
-  :deep(.el-tabs__header) {
-    margin-bottom: 20px;
-  }
+.training-tabs :deep(.el-tabs__header) {
+  margin-bottom: 20px;
 }
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   span {
     display: flex;
     align-items: center;
@@ -391,43 +458,35 @@ onUnmounted(() => {
     font-weight: 600;
   }
 }
-
 .config-card, .data-card {
   height: 100%;
   display: flex;
   flex-direction: column;
-
   :deep(.el-card__body) {
     flex: 1;
   }
 }
-
 .data-preview {
   margin-top: 8px;
-
   .preview-header {
     display: flex;
     align-items: center;
     gap: 16px;
     margin-bottom: 12px;
-
     .hint {
       font-size: 12px;
       opacity: 0.7;
     }
   }
 }
-
 .action-bar {
   margin: 28px 0;
   display: flex;
   gap: 16px;
   justify-content: center;
 }
-
 .log-card {
   margin-top: 20px;
-
   .log-container {
     background: rgba(0, 0, 0, 0.02);
     border-radius: 12px;
@@ -436,19 +495,16 @@ onUnmounted(() => {
     overflow-y: auto;
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 13px;
-
     pre {
       margin: 0;
       white-space: pre-wrap;
       word-break: break-all;
     }
-
     .dark & {
       background: rgba(255, 255, 255, 0.03);
     }
   }
 }
-
 .chart-card {
   margin-top: 24px;
   background: var(--card-bg);

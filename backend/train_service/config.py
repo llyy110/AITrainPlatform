@@ -12,7 +12,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", 'mysql+pymysql://modelmanager:linyu0110
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "linyu0110")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", 'red123')
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 JWT_SECRET_KEY = os.getenv("SECRET_KEY", 'django-insecure-lgtiphx#ezoelvx55qamypbif)f57l%r*vxi7m(02q90#*#(y-')
