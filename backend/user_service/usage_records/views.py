@@ -1,5 +1,7 @@
 from django.db import models
+from django.db.models import Avg
 from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.http import HttpResponse, FileResponse
 from django.utils import timezone
@@ -32,7 +34,6 @@ class ExportTrainingResultView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         record = TrainingRecord.objects.get(id=kwargs['pk'], user=request.user)
-        # 准备导出数据
         data = {
             'id': record.id,
             'model_type': record.model_type,
@@ -48,7 +49,6 @@ class ExportTrainingResultView(generics.RetrieveAPIView):
             'data_loading_duration': record.data_loading_duration,
             'created_at': record.created_at.isoformat(),
         }
-        # 支持 CSV 或 JSON，通过 query param ?format=csv
         format = request.query_params.get('format', 'json')
         if format == 'csv':
             response = HttpResponse(content_type='text/csv')
@@ -71,7 +71,6 @@ class DownloadDataFileView(generics.RetrieveAPIView):
         record = TrainingRecord.objects.get(id=kwargs['pk'], user=request.user)
         if not record.can_download:
             return Response({'error': '数据文件已超过一年保留期，仅可查看记录，不可下载'}, status=status.HTTP_403_FORBIDDEN)
-        # 调用训练服务的 HDFS 下载接口
         import requests
         training_service_url = "http://training-service:8001/api/hdfs/download"
         params = {'path': record.data_path}
@@ -81,8 +80,10 @@ class DownloadDataFileView(generics.RetrieveAPIView):
         else:
             return Response({'error': '文件下载失败'}, status=resp.status_code)
 
+
+
 class TrainingStatsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
@@ -90,20 +91,20 @@ class TrainingStatsView(APIView):
         total = records.count()
         completed = records.filter(status='completed').count()
         failed = records.filter(status='failed').count()
-        # 计算平均准确率（如果有）
-        avg_accuracy = records.filter(status='completed', metrics__has_key='accuracy').aggregate(avg=models.Avg('metrics__accuracy'))['avg']
+        training = records.filter(status='training').count()
+        # training = records.filter(status__in=['training', 'pending']).count()
+        model_types = records.values('model_type').distinct().count()
+        # 直接使用 final_accuracy 字段
+        avg_accuracy = records.filter(
+            status='completed',
+            final_accuracy__isnull=False
+        ).aggregate(avg=Avg('final_accuracy'))['avg']
+
         return Response({
             'total': total,
             'completed': completed,
             'failed': failed,
-            'success_rate': round(completed/total*100, 2) if total else 0,
-            'avg_accuracy': avg_accuracy
+            'training': training,
+            'model_types': model_types,
+            'avg_accuracy': avg_accuracy,
         })
-
-
-
-
-
-
-
-

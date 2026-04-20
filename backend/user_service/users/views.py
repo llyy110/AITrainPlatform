@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from chat.ChatSerializers import UserBriefSerializer
 from user_service import settings
 from .UserSerializers import LoginSerializer, RegisterSerializer, UserSerializer, \
     ProfileUpdateSerializer, ResetPasswordSerializer, SendResetCodeSerializer
@@ -172,3 +173,14 @@ def upload_avatar(request: HttpRequest):
     # 构造绝对 URL
     avatar_url = request.build_absolute_uri(user.avatar.url)
     return Response({'url': avatar_url})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_users(request):
+    q = request.query_params.get('q', '')
+    if len(q) < 2:
+        return Response([])
+    users = User.objects.filter(username__icontains=q).exclude(id=request.user.id)[:10]
+    serializer = UserBriefSerializer(users, many=True)
+    return Response(serializer.data)

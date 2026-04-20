@@ -34,15 +34,36 @@
                     <el-icon><View /></el-icon>
                     预览前100行
                   </el-button>
-                  <span v-if="previewRows.length" class="hint">已加载 {{ previewRows.length }} 行</span>
+                  <span v-if="previewType === 'table' && previewRows.length" class="hint">
+                    已加载 {{ previewRows.length }} 行
+                  </span>
                 </div>
-                <el-table :data="previewRows" max-height="240" v-if="previewRows.length" size="small" border>
+
+                <!-- 图片预览 -->
+                <div v-if="previewType === 'image'" class="image-preview">
+                  <el-image
+                    :src="previewImageSrc"
+                    :preview-src-list="[previewImageSrc]"
+                    fit="contain"
+                    style="max-width: 100%; max-height: 300px; cursor: pointer;"
+                  />
+                </div>
+
+                <!-- 表格预览 -->
+                <el-table
+                  v-else-if="previewType === 'table' && previewRows.length"
+                  :data="previewRows"
+                  max-height="240"
+                  size="small"
+                  border
+                >
                   <el-table-column v-for="(col, idx) in previewCols" :key="idx" :label="col">
                     <template #default="{ row }">
                       <div v-html="row[idx]"></div>
                     </template>
                   </el-table-column>
                 </el-table>
+
                 <el-empty v-else description="暂无预览数据" />
               </div>
             </el-card>
@@ -159,6 +180,8 @@ const stopping = ref(false)
 
 // 预览相关
 const previewLoading = ref(false)
+const previewType = ref('')        // 'image' 或 'table'
+const previewImageSrc = ref('')    // 图片 Data URL
 const previewRows = ref([])
 const previewCols = ref([])
 
@@ -178,7 +201,61 @@ const templateDialogVisible = ref(false)
 const templates = ref([])
 const TEMPLATE_KEY = 'training_presets'
 
-// ==================== 模板管理函数 ====================
+// ==================== 预览处理 ====================
+const processPreviewResponse = (data) => {
+  if (data.type === 'image') {
+    previewType.value = 'image'
+    previewImageSrc.value = `data:image/${data.format};base64,${data.data}`
+    previewCols.value = []
+    previewRows.value = []
+  } else if (data.columns && data.rows) {
+    previewType.value = 'table'
+    previewCols.value = data.columns
+    previewRows.value = data.rows
+    previewImageSrc.value = ''
+  } else {
+    resetPreview()
+  }
+}
+
+const resetPreview = () => {
+  previewType.value = ''
+  previewCols.value = []
+  previewRows.value = []
+  previewImageSrc.value = ''
+}
+
+const handleFilePreview = async (filePath) => {
+  previewLoading.value = true
+  try {
+    const res = await api.get('/train/files/preview', { params: { path: filePath, rows: 100 } })
+    processPreviewResponse(res.data)
+  } catch (e) {
+    ElMessage.error('预览失败')
+    resetPreview()
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const previewData = async () => {
+  if (!selectedPath.value) {
+    ElMessage.warning('请先选择数据文件')
+    return
+  }
+  previewLoading.value = true
+  try {
+    const res = await api.get('/train/files/preview', { params: { path: selectedPath.value, rows: 100 } })
+    processPreviewResponse(res.data)
+  } catch (e) {
+    ElMessage.error('预览失败')
+    resetPreview()
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+// ==================== 模板管理 ====================
 const getTemplates = () => {
   try {
     return JSON.parse(localStorage.getItem(TEMPLATE_KEY)) || []
@@ -190,20 +267,13 @@ const getTemplates = () => {
 const saveTemplateToStorage = (name, params, rawForm) => {
   const allTemplates = getTemplates()
   const existingIndex = allTemplates.findIndex(t => t.name === name)
-  const template = {
-    name,
-    params,
-    rawForm,
-    savedAt: new Date().toISOString()
-  }
+  const template = { name, params, rawForm, savedAt: new Date().toISOString() }
 
   if (existingIndex >= 0) {
     allTemplates[existingIndex] = template
   } else {
     allTemplates.push(template)
   }
-
-  // 限制最多保存 10 个
   if (allTemplates.length > 10) allTemplates.shift()
   localStorage.setItem(TEMPLATE_KEY, JSON.stringify(allTemplates))
 }
@@ -247,27 +317,24 @@ const saveAsPreset = () => {
     cancelButtonText: '取消',
     inputPattern: /\S+/,
     inputErrorMessage: '模板名称不能为空'
-  })
-    .then(({ value }) => {
-      const allTemplates = getTemplates()
-      const existing = allTemplates.find(t => t.name === value)
-
-      if (existing) {
-        ElMessageBox.confirm(`模板 "${value}" 已存在，是否覆盖？`, '提示', { type: 'warning' })
-          .then(() => {
-            saveTemplateToStorage(value, params, rawForm)
-            ElMessage.success(`模板 "${value}" 已覆盖`)
-          })
-          .catch(() => {})
-      } else {
-        saveTemplateToStorage(value, params, rawForm)
-        ElMessage.success(`模板 "${value}" 已保存`)
-      }
-    })
-    .catch(() => {})
+  }).then(({ value }) => {
+    const allTemplates = getTemplates()
+    const existing = allTemplates.find(t => t.name === value)
+    if (existing) {
+      ElMessageBox.confirm(`模板 "${value}" 已存在，是否覆盖？`, '提示', { type: 'warning' })
+        .then(() => {
+          saveTemplateToStorage(value, params, rawForm)
+          ElMessage.success(`模板 "${value}" 已覆盖`)
+        })
+        .catch(() => {})
+    } else {
+      saveTemplateToStorage(value, params, rawForm)
+      ElMessage.success(`模板 "${value}" 已保存`)
+    }
+  }).catch(() => {})
 }
 
-// ==================== 训练相关原有逻辑 ====================
+// ==================== 训练逻辑 ====================
 watch(() => trainingStore.currentTaskId, (newId) => {
   currentTaskId.value = newId
   if (newId) startLogPolling()
@@ -298,27 +365,6 @@ const rerunTraining = async (record) => {
 }
 
 const viewDetail = (id) => router.push(`/training/detail/${id}`)
-
-const handleFilePreview = async (filePath) => {
-  previewLoading.value = true
-  try {
-    const res = await api.get('/train/files/preview', { params: { path: filePath, rows: 100 } })
-    if (res.data.type === 'image') {
-      previewCols.value = ['预览']
-      previewRows.value = [[`<img src="data:image/${res.data.format};base64,${res.data.data}" style="max-width:100%; max-height:300px;" />`]]
-    } else if (res.data.columns && res.data.rows) {
-      previewCols.value = res.data.columns
-      previewRows.value = res.data.rows
-    } else {
-      previewRows.value = []
-    }
-  } catch (e) {
-    ElMessage.error('预览失败')
-    previewRows.value = []
-  } finally {
-    previewLoading.value = false
-  }
-}
 
 const stopCurrentTraining = async () => {
   if (!currentTaskId.value) return
@@ -354,10 +400,7 @@ const startExpireTimer = () => {
 }
 
 const stopExpireTimer = () => {
-  if (expireTimer) {
-    clearTimeout(expireTimer)
-    expireTimer = null
-  }
+  if (expireTimer) { clearTimeout(expireTimer); expireTimer = null }
 }
 
 const startTrain = async () => {
@@ -380,31 +423,6 @@ const startTrain = async () => {
   }
 }
 
-const previewData = async () => {
-  if (!selectedPath.value) {
-    ElMessage.warning('请先选择数据文件')
-    return
-  }
-  previewLoading.value = true
-  try {
-    const res = await api.get('/train/files/preview', { params: { path: selectedPath.value, rows: 100 } })
-    if (res.data.type === 'image') {
-      previewCols.value = ['预览']
-      previewRows.value = [[`<img src="data:image/${res.data.format};base64,${res.data.data}" style="max-width:100%; max-height:200px;" />`]]
-    } else if (res.data.columns && res.data.rows) {
-      previewCols.value = res.data.columns
-      previewRows.value = res.data.rows
-    } else {
-      previewRows.value = []
-    }
-  } catch (e) {
-    ElMessage.error('预览失败')
-    previewRows.value = []
-  } finally {
-    previewLoading.value = false
-  }
-}
-
 const startLogPolling = () => {
   if (logTimer) clearInterval(logTimer)
   logTimer = setInterval(async () => {
@@ -413,19 +431,14 @@ const startLogPolling = () => {
       const res = await api.get(`/train/training/log/${currentTaskId.value}?tail=50`)
       logs.value = res.data.logs || ''
       nextTick(() => {
-        if (logContainer.value) {
-          logContainer.value.scrollTop = logContainer.value.scrollHeight
-        }
+        if (logContainer.value) logContainer.value.scrollTop = logContainer.value.scrollHeight
       })
     } catch (e) {}
   }, 2000)
 }
 
 const clearLogPolling = () => {
-  if (logTimer) {
-    clearInterval(logTimer)
-    logTimer = null
-  }
+  if (logTimer) { clearInterval(logTimer); logTimer = null }
 }
 
 onMounted(() => {
@@ -478,6 +491,14 @@ onUnmounted(() => {
       opacity: 0.7;
     }
   }
+}
+.image-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
 }
 .action-bar {
   margin: 28px 0;

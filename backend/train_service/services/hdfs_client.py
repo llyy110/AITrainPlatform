@@ -75,6 +75,13 @@ def create_spark_session():
             .set("spark.executor.cores", "1")
             .set("spark.default.parallelism", "4")
             .set("spark.sql.shuffle.partitions", "4")
+            #
+            # .set("spark.executor.memory", "512m")
+            # .set("spark.driver.memory", "512m")
+            # .set("spark.executor.cores", "1")
+            # .set("spark.default.parallelism", "2")
+            # .set("spark.sql.shuffle.partitions", "2")
+            #
             .set("spark.network.timeout", "300s")
             .set("spark.executor.heartbeatInterval", "30s")
             .set("spark.sql.adaptive.enabled", "true")
@@ -82,6 +89,11 @@ def create_spark_session():
             .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
             .set("spark.driver.extraJavaOptions", "-XX:+UseG1GC")
             .set("spark.executor.extraJavaOptions", "-XX:+UseG1GC"))
+            #
+            # .set("spark.driver.extraJavaOptions", "-XX:+UseG1GC -XX:MaxRAMPercentage=70")
+            # .set("spark.executor.extraJavaOptions", "-XX:+UseG1GC -XX:MaxRAMPercentage=70"))
+
+
 
     sc = SparkContext(conf=conf)
     spark = SparkSession.builder.config(conf=conf).getOrCreate()
@@ -239,42 +251,5 @@ def detect_delimiter(line):
     else:
         return None
 
-# def load_data(file_path):
-#     """数据加载方法"""
-#     # 创建独立的Spark会话
-#     sc, spark = create_spark_session()
-#     print("load_data方法，[Spark] 创建新的Spark会话")
-#     try:
-#         # 尝试不同的编码方式
-#         encodings = ['utf-8', 'gbk', 'latin-1', 'iso-8859-1']
-#         for encoding in encodings:
-#             try:
-#                 # 加载数据并检测分隔符
-#                 first_line = spark.read.text(file_path).first().value
-#                 delimiter = detect_delimiter(first_line)
-#                 if delimiter is None:
-#                     raise ValueError("无法检测到分隔符，请手动指定分隔符")
-#                 print(f"检测到的分隔符: '{delimiter}'，编码: {encoding}")
-#                 data = spark.read.csv(file_path, header=True, inferSchema=True, sep=delimiter, encoding=encoding)
-#                 # 清理空列
-#                 empty_cols = [col for col in data.columns if col in ['', '_c0']]
-#                 if empty_cols:
-#                     data = data.drop(*empty_cols)
-#                 pandas_df = data.toPandas()
-#                 # 检查数据质量
-#                 if pandas_df.empty:
-#                     continue
-#                 print(f"成功加载数据: {pandas_df.shape}")
-#                 return pandas_df
-#             except Exception as e:
-#                 print(f"使用编码 {encoding} 失败: {e}")
-#                 continue
-#         raise ValueError("所有编码方式都失败，无法加载数据")
-#     except Exception as e:
-#         print(f"数据加载失败: {e}")
-#         raise
-#     finally:
-#         # 确保Spark会话被清理
-#         if sc or spark:
-#             print("[Spark] 清理Spark会话")
-#             cleanup_spark_session(sc, spark)
+
+

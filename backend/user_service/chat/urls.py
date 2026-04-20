@@ -1,0 +1,11 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('conversations/', views.ConversationListView.as_view(), name='conversations'),
+    path('conversations/<int:conversation_id>/messages/', views.MessageListView.as_view(), name='messages'),
+    path('conversations/<int:conversation_id>/read/', views.MarkAsReadView.as_view(), name='mark-read'),
+    path('messages/unread/', views.UnreadCountView.as_view(), name='unread-count'),
+    path('announcements/', views.AnnouncementListView.as_view(), name='announcements'),
+    path('announcements/create/', views.AnnouncementCreateView.as_view(), name='announcement-create'),
+]

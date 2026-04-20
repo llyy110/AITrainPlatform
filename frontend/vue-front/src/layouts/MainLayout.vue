@@ -70,10 +70,7 @@
               inline-prompt
               @change="toggleDark"
           />
-          <el-badge v-if="userStore.isLoggedIn" :value="3" :max="99" class="notice-badge">
-            <el-button :icon="Bell" circle/>
-          </el-badge>
-          <!-- 登录状态显示用户信息，未登录显示登录/注册按钮 -->
+          <MessageCenter v-if="userStore.isLoggedIn"/>          <!-- 登录状态显示用户信息，未登录显示登录/注册按钮 -->
           <el-dropdown v-if="userStore.isLoggedIn" @command="handleUserCommand">
             <span class="user-info">
               <el-avatar :size="36" :src="userStore.userInfo.avatar"/>
@@ -112,8 +109,9 @@ import {useDark, useToggle} from '@vueuse/core'
 import {useUserStore} from '@/stores/user'
 import {useTrainingStore} from '@/stores/training'
 import {useRouter} from 'vue-router'
-import {Bell, ChatLineSquare, Cpu, DataBoard, Expand, Fold, List, Moon, Sunny, User} from '@element-plus/icons-vue'
+import {ChatLineSquare, Cpu, DataBoard, Expand, Fold, List, Moon, Sunny, User} from '@element-plus/icons-vue'
 import AgentChat from '@/components/AgentChat.vue'
+import MessageCenter from '@/components/MessageCenter.vue'
 import {ElMessage} from 'element-plus'
 
 const isCollapse = ref(false)

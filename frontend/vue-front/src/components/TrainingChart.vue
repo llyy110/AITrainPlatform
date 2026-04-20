@@ -22,6 +22,14 @@ const initChart = () => {
   chart = echarts.init(chartRef.value)
   chart.setOption({
     title: { text: '训练误差曲线', left: 'center' },
+    toolbox: {
+      feature: {
+        dataZoom: { yAxisIndex: 'none' },
+        restore: {},
+        saveAsImage: {}
+      }
+    },
+    dataZoom: [{ type: 'inside' }, { type: 'slider' }],
     xAxis: {
       name: '训练时长 (秒)',
       type: 'value',
@@ -55,8 +63,6 @@ const initChart = () => {
         }
 
         const epoch = epochNumbers.value[dataIndex] || '?'
-
-        // 判断状态：如果是最后一个点且整体已完成，则显示 completed，否则显示 training
         let status = 'training'
         if (currentPhase.value === 'completed') {
           status = (dataIndex === epochNumbers.value.length - 1) ? 'completed' : 'training'
@@ -104,7 +110,6 @@ const updateChart = async () => {
     epochNumbers.value = validEpochs.map(e => e.epoch)
     const chartData = validEpochs.map(e => [e.training_duration * 1000, e.error])
 
-    // 图表标题：如果整体已完成，加上 ✅ 标记
     const titleText = currentPhase.value === 'completed' ? '✅ 训练误差曲线 (已完成)' : '训练误差曲线'
     chart.setOption({
       title: { text: titleText },

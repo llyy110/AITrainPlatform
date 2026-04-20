@@ -92,7 +92,7 @@
       <el-col :span="24">
         <el-card class="glass-card">
           <template #header>
-            <span><el-icon><TrendCharts /></el-icon> 模型表现趋势</span>
+            <span><el-icon><TrendCharts /></el-icon> 近期训练趋势</span>
           </template>
           <div ref="trendChart" style="height: 200px;"></div>
         </el-card>
@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useTrainingStore } from '@/stores/training'
 import { useRouter } from 'vue-router'
@@ -119,22 +119,19 @@ const recentTasks = ref([])
 const trendChart = ref(null)
 const statsLoading = ref(false)
 
-// 平台特色介绍（保持不变）
 const features = ref([
   { title: '分布式训练', icon: 'Cpu', color: '#409eff', desc: '基于Hadoop+Spark集群，训练效率提升3倍以上' },
   { title: '可视化监控', icon: 'TrendCharts', color: '#67c23a', desc: '实时误差曲线与日志流，训练过程一目了然' },
   { title: 'AI智能助手', icon: 'ChatDotRound', color: '#e6a23c', desc: '大模型驱动的问答助手，随时解答疑问' }
 ])
 
-// 统计数据（初始值，后续通过接口更新）
 const stats = ref([
   { label: '总训练次数', value: 0, icon: 'DataAnalysis', color: 'blue' },
   { label: '进行中', value: 0, icon: 'Timer', color: 'orange' },
   { label: '已完成', value: 0, icon: 'Finished', color: 'green' },
-  { label: '失败', value: 0, icon: 'Cpu', color: 'purple' }  // 可根据实际调整
+  { label: '模型类型', value: 0, icon: 'Cpu', color: 'purple' }
 ])
 
-// 公告（可保留演示数据，或也改为动态）
 const announcements = ref([
   { id: 1, tag: '新功能', tagColor: '#409eff', content: '支持训练任务中途停止与恢复', time: '2小时前' },
   { id: 2, tag: '优化', tagColor: '#67c23a', content: '文件管理器支持拖拽上传', time: '昨天' },
@@ -146,24 +143,19 @@ const statusTag = (status) => {
   return map[status] || 'info'
 }
 
-// 获取统计数据（从 usage_records 的统计接口）
 const fetchStats = async () => {
   statsLoading.value = true
   try {
-    // 后端 TrainingStatsView 返回 { total, completed, failed, success_rate, avg_accuracy }
     const res = await api.get('/usage/records/stats/')
     const data = res.data
-    // 进行中的数量 = 总数 - 已完成 - 失败（假设没有 pending 等其他状态）
-    const training = data.total - data.completed - data.failed
     stats.value = [
       { label: '总训练次数', value: data.total || 0, icon: 'DataAnalysis', color: 'blue' },
-      { label: '进行中', value: training > 0 ? training : 0, icon: 'Timer', color: 'orange' },
+      { label: '进行中', value: data.training || 0, icon: 'Timer', color: 'orange' },
       { label: '已完成', value: data.completed || 0, icon: 'Finished', color: 'green' },
-      { label: '失败', value: data.failed || 0, icon: 'Cpu', color: 'purple' }
+      { label: '模型类型', value: data.model_types || 0, icon: 'Cpu', color: 'purple' }
     ]
   } catch (e) {
     console.error('获取统计数据失败', e)
-    // 失败时保留默认值 0
   } finally {
     statsLoading.value = false
   }
@@ -188,7 +180,6 @@ const stopTask = async (id) => {
     await api.post(`/train/training/stop/${id}`)
     ElMessage.success('已发送停止指令')
     fetchRecentTasks()
-    // 停止后刷新统计数据
     fetchStats()
   } catch (e) {
     ElMessage.error('停止失败')
@@ -219,6 +210,7 @@ onMounted(() => {
   }
 })
 </script>
+
 
 <style scoped lang="scss">
 // 保持原有样式不变

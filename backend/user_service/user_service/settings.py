@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'chat.apps.ChatConfig'
 
 ]
 AUTH_USER_MODEL = 'users.User'

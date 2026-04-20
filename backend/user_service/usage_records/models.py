@@ -1,23 +1,23 @@
 from django.db import models
-from django.utils import timezone
 
 class TrainingRecord(models.Model):
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    model_type = models.CharField(max_length=50)   # train_cnn_img_classifier ...
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, db_column='user_id')
+    task_id = models.CharField(max_length=64, unique=True)
+    model_type = models.CharField(max_length=50)
     hidden_layer_sizes = models.IntegerField()
     max_iter = models.IntegerField()
     learning_rate = models.FloatField()
-    data_path = models.CharField(max_length=500)   # HDFS路径
-    status = models.CharField(max_length=20)       # completed, failed, training
-    metrics = models.JSONField(default=dict)       # 存储accuracy, loss等
-    training_duration = models.FloatField(null=True)
-    data_loading_duration = models.FloatField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    can_download = models.BooleanField(default=True)  # 一年内可下载
+    data_path = models.TextField()
+    status = models.CharField(max_length=20, default='pending')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    final_error = models.FloatField(null=True, blank=True)
+    final_accuracy = models.FloatField(null=True, blank=True)
+    final_mae = models.FloatField(null=True, blank=True)
+    model_save_path = models.TextField(null=True, blank=True)
+    training_log_path = models.TextField(null=True, blank=True)
+    expired_at = models.DateTimeField(null=True, blank=True)
 
-    def save(self, *args, **kwargs):
-        # 自动判断：超过一年则can_download=False
-        if self.created_at and (timezone.now() - self.created_at).days > 365:
-            self.can_download = False
-        super().save(*args, **kwargs)
+    class Meta:
+        db_table = 'training_records'
+        managed = False  # 告诉 Django 不要管理这张表
