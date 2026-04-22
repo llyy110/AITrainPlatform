@@ -213,7 +213,6 @@ onMounted(() => {
 
 
 <style scoped lang="scss">
-// 保持原有样式不变
 .dashboard {
   max-width: 1400px;
   margin: 0 auto;
@@ -223,89 +222,115 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 36px;
+  padding: 8px 0;
   h1 {
     font-weight: 700;
-    font-size: 2rem;
+    font-size: 2.2rem;
     margin: 0 0 8px;
-    background: linear-gradient(135deg, #1f2d5c, #409eff);
+    background: linear-gradient(135deg, #1e2b5c, #409eff, #7c3aed);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
   }
-  p { opacity: 0.7; margin: 0; font-size: 1rem; }
+  p {
+    opacity: 0.7;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 400;
+  }
 }
 
 .intro-row {
   margin: 40px 0;
   .feature-card {
     background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    border-radius: 24px;
-    padding: 32px 24px;
+    backdrop-filter: blur(16px);
+    border-radius: 32px;
+    padding: 36px 24px;
     text-align: center;
     border: var(--border-light);
-    transition: transform 0.3s;
+    transition: all 0.3s;
     &:hover {
-      transform: translateY(-5px);
+      transform: translateY(-6px);
       box-shadow: var(--primary-glow);
+      border-color: #409eff40;
     }
-    h3 {
-      margin: 16px 0 8px;
-      font-size: 20px;
-    }
-    p {
-      opacity: 0.8;
-      font-size: 14px;
-    }
+    h3 { margin: 18px 0 8px; font-size: 22px; font-weight: 600; }
+    p { opacity: 0.75; font-size: 15px; }
   }
 }
 
-.stat-cards { margin-bottom: 30px; }
+.stat-cards { margin-bottom: 36px; }
 
 .stat-card {
   background: var(--card-bg);
-  backdrop-filter: blur(12px);
-  border-radius: 24px;
-  padding: 22px 20px;
+  backdrop-filter: blur(16px);
+  border-radius: 28px;
+  padding: 24px 20px;
   display: flex;
   align-items: center;
   gap: 18px;
   box-shadow: var(--card-shadow);
-  transition: all 0.3s;
+  transition: all 0.25s;
   border: var(--border-light);
-  &:hover { transform: translateY(-3px); box-shadow: var(--primary-glow); }
-  .stat-icon { opacity: 0.8; }
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--primary-glow);
+  }
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: rgba(64, 158, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .stat-content { display: flex; flex-direction: column; }
-  .stat-value { font-size: 32px; font-weight: 700; line-height: 1.2; }
-  .stat-label { opacity: 0.7; font-size: 14px; }
-  &.blue .stat-icon { color: #409eff; }
-  &.orange .stat-icon { color: #e6a23c; }
-  &.green .stat-icon { color: #67c23a; }
-  &.purple .stat-icon { color: #8e71ff; }
+  .stat-value { font-size: 36px; font-weight: 700; line-height: 1.2; }
+  .stat-label { opacity: 0.65; font-size: 14px; font-weight: 500; }
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  span { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 16px;
+  }
 }
 
 .announcement-list {
   .announcement-item {
-    padding: 14px 0;
-    border-bottom: 1px dashed rgba(0,0,0,0.08);
-    .dark & { border-bottom-color: rgba(255,255,255,0.08); }
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    .dark & { border-bottom-color: rgba(255,255,255,0.06); }
     &:last-child { border-bottom: none; }
     .tag {
       color: white;
-      padding: 2px 10px;
-      border-radius: 20px;
+      padding: 4px 12px;
+      border-radius: 40px;
       font-size: 12px;
-      margin-right: 8px;
+      font-weight: 500;
+      margin-right: 10px;
     }
-    p { margin: 8px 0 4px; font-weight: 500; }
-    small { opacity: 0.6; }
+    p { margin: 10px 0 6px; font-weight: 500; }
+    small { opacity: 0.55; font-size: 12px; }
   }
+}
+
+// 表格样式优化
+:deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(0,0,0,0.02);
+  --el-table-row-hover-bg-color: rgba(64, 158, 255, 0.04);
+  border-radius: 20px;
+  overflow: hidden;
 }
 </style>

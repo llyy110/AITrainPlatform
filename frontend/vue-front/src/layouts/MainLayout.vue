@@ -165,7 +165,7 @@ const handleUserCommand = (cmd) => {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #1e2b4a 0%, #0f172a 100%);
+  background: linear-gradient(165deg, #13203a 0%, #0b1426 100%);
   backdrop-filter: blur(10px);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;

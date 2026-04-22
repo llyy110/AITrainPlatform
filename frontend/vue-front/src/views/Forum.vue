@@ -230,7 +230,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .forum-page {
-  max-width: 900px;
+  max-width: 980px;
   margin: 0 auto;
 }
 
@@ -238,75 +238,72 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 28px;
 }
 
 .post-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 20px;
 }
 
 .post-card {
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(16px) !important;
+  border-radius: 28px !important;
+  border: var(--border-light) !important;
+  transition: all 0.3s;
+  padding: 4px;
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: var(--primary-glow);
+    border-color: #409eff40 !important;
   }
   .post-header {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     .post-title {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #303133;
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1e293b, #334155);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      .dark & {
+        background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
     }
     .post-meta {
       display: flex;
-      gap: 20px;
-      font-size: 13px;
-      color: #909399;
-      span {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
+      gap: 24px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      span { display: flex; align-items: center; gap: 6px; }
     }
   }
   .post-content-preview {
-    color: #606266;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    word-break: break-word;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 20px;
+    font-size: 15px;
   }
   .post-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 8px;
-    border-top: 1px solid #ebeef5;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    .dark & { border-top-color: rgba(255,255,255,0.06); }
     .stats {
       display: flex;
-      gap: 16px;
-      color: #909399;
-      font-size: 13px;
-      span {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
+      gap: 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      span { display: flex; align-items: center; gap: 5px; }
     }
   }
-}
-
-.pagination-wrapper {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
 }
 </style>
